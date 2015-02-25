@@ -1,103 +1,59 @@
-var cyclone = {};
 
-cyclone.vector3 = function(x,y,z) {
+var scene = new THREE.Scene(),
+	camera = new THREE.PerspectiveCamera( 45, window.innerWidth/window.innerHeight, 1, 1000 );
+camera.position.set( 60, 50, 60 );
+camera.lookAt( scene.position );
+
+var renderer = new THREE.WebGLRenderer();
+renderer.setSize( window.innerWidth, window.innerHeight );
+document.body.appendChild( renderer.domElement );
+
+var geometry = new THREE.PlaneGeometry( 75, 75, 50, 50 );
+var material = new THREE.MeshBasicMaterial( {color: 0xffff00, side: THREE.DoubleSide} );
+var plane = new THREE.Mesh( geometry, material );
+plane.rotation.x = Math.PI / -2;
+scene.add( plane )
+
+var particles = [];
+
+var geometry1 = new THREE.BoxGeometry( 3, 3, 1 );
+var material1 = new THREE.MeshBasicMaterial( { color: 0x00ff00, wireframe: true } );
+var cube1 = new THREE.Mesh( geometry1, material1 );
+cube1.position.x = 5;
+cube1.position.y = 21;
+
+var geometry2 = new THREE.BoxGeometry( 3, 5, 4 );
+var material2 = new THREE.MeshBasicMaterial( { color: 0x00ff00, wireframe: true } );
+var cube2 = new THREE.Mesh( geometry2, material2 );
+cube2.position.x = -5;
+cube2.position.y = 25;
+
+particles.push(new cyclone.particle(cube1));
+particles.push(new cyclone.particle(cube2));
+
+for (var i = particles.length - 1; i >= 0; i--) {
+	scene.add( particles[i].mesh );
+};
+
+var time = -1;
+
+var render = function () {
+	requestAnimationFrame( render );
+
+	if (time === -1) {
+		var difference = 0;
+	} else {
+		var temp = +new Date();
+		var difference = temp - time;
+	}
+	time = new Date();
+
+	for (var i = particles.length - 1; i >= 0; i--) {
+		particles[i].update(difference/1000);
+	};
+
 	
-	this.init = function(x,y,z) {
-		this.x = x;
-		this.y = y;
-		this.z = z;
-	}
-	this.init(x,y,z);
+	renderer.render(scene, camera);
+};
 
-	this.invert = function() {
-		this.x = -x;
-		this.y = -y;
-		this.z = -z;
-	}
-
-	this.magnitude = function() {
-		return Math.sqrt(this.x*this.x + this.y*this.y + this.z*this.z);
-	}
-
-	this.magnitudeSquared = function() {
-		return this.x*this.x + this.y*this.y + this.z*this.z;
-	}
-
-	this.scalar = function(scalar) {
-		this.x = this.x * scalar;
-		this.y = this.y * scalar;
-		this.z = this.z * scalar;
-	}
-
-	this.scalarCopy = function(scalar) {
-		return new cyclone.vector3(this.x * scalar, this.y * scalar, this.z * scalar);
-	}
-
-	this.add = function(vector3) {
-		this.x = this.x + vector3.x;
-		this.y = this.y + vector3.y;
-		this.z = this.z + vector3.z;
-	}
-
-	this.addCopy = function(vector3) {
-		return new cyclone.vector3(this.x + vector3.x, this.y + vector3.y, this.z + vector3.z);
-	}
-
-	this.sub = function(vector3) {
-		this.x = this.x - vector3.x;
-		this.y = this.y - vector3.y;
-		this.z = this.z - vector3.z;
-	}
-
-	this.subCopy = function(vector3) {
-		return new cyclone.vector3(this.x - vector3.x, this.y - vector3.y, this.z - vector3.z);
-	}
-
-	this.componentProductUpdate = function(vector3) {
-		this.x = this.x * vector3.x;
-		this.y = this.y * vector3.y;
-		this.z = this.z * vector3.z;
-	}
-
-	this.componentProduct = function(vector3) {
-		return new cyclone.vector3(this.x * vector3.x, this.y * vector3.y, this.z * vector3.z);
-	}
-
-	this.scalarProduct = function(vector3) {
-		return this.x*vector3.x + this.y*vector3.y + this.z*vector3.z;
-	}
-
-	this.vectorProduct = function(vector3) {
-		return new cyclone.vector3(
-				this.y*vector3.z - this.z*vector3.y,
-				this.z*vector3.x - this.x*vector3.z,
-				this.x*vector3.y - this.y*vector3.x
-			);
-	}
-
-	this.addScaledVector = function(scalar, vector3) {
-		this.x = scalar * vector3.x;
-		this.y = scalar * vector3.y;
-		this.z = scalar * vector3.z;
-	}
-
-	this.normalize = function() {
-		var d = this.magnitude();
-		if (d > 0) {
-			this.scalar(1/d);
-		}
-	}
-
-	this.print = function() {
-		console.log('x: ' + this.x + ', y: ' + this.y + ', z: ' + this.z);
-	}
-
-}
-
-cyclone.particle = function(pos, vel, acc) {
-	this.position = pos;	//vector3
-	this.velocity = vel;	//vector3
-	this.acceleration = acc;	//vector3
-	this.damping = .99;
-	this.inverseMass = 1/1;
-}
+render();
