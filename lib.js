@@ -51,11 +51,14 @@ cyclone.particle = function(mesh) {
 		var velocity = cyclone.helpers.addScaledVector(this.mesh.velocity, this.mesh.acceleration, t);;
 		this.mesh.velocity.set(velocity.x, velocity.y, velocity.z);
 		
-		count += 1;		
+		count += 1;
 
 		if (this.mesh.position.y < 0) {
 			scene.remove(this.mesh);
 			this.stillExists = false;
+			if (this.emitter) {
+				this.emitter.sourceFinished = true;
+			}
 		}
 
 		if (this.emitter) {
@@ -141,6 +144,14 @@ cyclone.particle = function(mesh) {
 	{
 		this.emitter = new emitter(n, duration);
 	}
+
+	this.canRemove = function() {
+		if (this.emitter !== false) {
+			if (!this.emitter.finished) return false; 
+		}
+		if (this.stillExists) return false;
+		return true;
+	}
 }
 
 var emitter = function(n, duration) {
@@ -149,8 +160,69 @@ var emitter = function(n, duration) {
 	this.count = n;
 	this.started = false;
 	this.finished = false;
-	this.pool = [];
+	this.sourceFinished = false;
 
+	// this.duration = duration;
+
+	this.emit = function(msElapsed, velocity, position) {
+
+		var indexesToRemove = [];
+		for (var i = this.particles.length - 1; i >= 0; i--) {
+			if (!this.started) this.started = true;
+			if (this.particles[i].canRemove()) indexesToRemove.push(i);
+			this.particles[i].update(msElapsed);
+		};
+
+		for (var i = 0; i < indexesToRemove.length; i++) {
+			// return the particle to the available pool
+			if (typeof this.particles[indexesToRemove[i]] !== 'undefined') {
+				particlePool.push(this.particles[indexesToRemove[i]].mesh);
+				this.particles.splice(indexesToRemove[i], 1);
+			} else {
+				// 
+				console.error('index wasnt found in array, this should never happen');
+				console.log('indexs to remove:');
+				console.log(JSON.stringify(indexesToRemove));
+				console.log('particle string length');
+				console.log(this.particles.length);
+			}
+		};
+
+		// check if the emitter is finished
+		if (this.started) {
+			if (this.particles.length === 0) this.finished = true;
+		}
+
+		if (!this.sourceFinished) {
+			console.log('adding');
+			for (var i = this.count - 1; i >= 0; i--) {
+				var newSpark = particlePool.pop();
+				if (typeof newSpark !== 'undefined') {
+					var sparkVelocity = {
+							x : velocity.x + (Math.floor(Math.random() * 400) - 200),
+							y : velocity.y + (Math.floor(Math.random() * 400) - 200),
+							z : velocity.z + (Math.floor(Math.random() * 400) - 200),
+						}, 
+						spark = new cyclone.particle(newSpark);
+					//spark.setMass(.01); // 1.0kg - mostly blast damage
+					spark.setVelocity(new THREE.Vector3(sparkVelocity.x, sparkVelocity.y, sparkVelocity.z)); //
+					spark.setAcceleration(new THREE.Vector3(0, -250.0, 500));
+					spark.setDamping(0.9);
+					spark.setPosition(position.x, position.y, position.z);
+
+					this.particles.push(spark);
+					scene.add(spark.mesh);
+				} else {
+					console.log('spark array is empty');
+				}
+			};
+		}
+	}
+
+}
+
+var particlePoolClass = function(n) {
+	this.pool = [];
 	for (var i = 1000 - 1; i >= 0; i--) {
 		var geometry = new THREE.BoxGeometry( 2, 2, 2 );
 		var material = new THREE.MeshBasicMaterial({ color: 0xFFFFFF });
@@ -160,52 +232,11 @@ var emitter = function(n, duration) {
 		this.pool.push(mesh);
 	};
 
-	console.log(this.pool);
-
-	// this.duration = duration;
-
-	this.emit = function(msElapsed, velocity, position) {
-
-		var indexesToRemove = [];
-		for (var i = this.particles.length - 1; i >= 0; i--) {
-			if (!this.started) this.started = true;
-			if (!this.particles[i].stillExists) indexesToRemove.push(i);
-			this.particles[i].update(msElapsed);
-		};
-		for (var i = indexesToRemove.length - 1; i >= 0; i--) {
-			// return the particle to the available pool
-			this.pool.push(this.particles[indexesToRemove[i]].mesh);
-			this.particles.splice(indexesToRemove[i], 1);
-		};
-
-		for (var i = this.count - 1; i >= 0; i--) {
-			
-			var newSpark = this.pool.pop();
-
-			if (newSpark !== 'undefined') {
-
-				var sparkVelocity = {
-					x : velocity.x + (Math.floor(Math.random() * 400) - 200),
-					y : velocity.y + (Math.floor(Math.random() * 400) - 200),
-					z : velocity.z + (Math.floor(Math.random() * 400) - 200),
-				}
-
-				var spark = new cyclone.particle(newSpark);
-				//spark.setMass(.01); // 1.0kg - mostly blast damage
-				spark.setVelocity(new THREE.Vector3(sparkVelocity.x, sparkVelocity.y, sparkVelocity.z)); //
-				spark.setAcceleration(new THREE.Vector3(0, -250.0, 0));
-				spark.setDamping(0.9);
-				spark.setPosition(position.x, position.y, position.z);
-
-				this.particles.push(spark);
-				scene.add(spark.mesh);
-			} else {
-				console.log('spark array is empty');
-			}
-
-			
-		};
-		
+	this.pop = function() {
+		return this.pool.pop();
+	};
+	this.push = function(particle) {
+		this.pool.push(particle);
 	}
 
 }

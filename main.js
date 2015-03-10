@@ -1,5 +1,6 @@
 
 var particles = [],
+	particlePool = new particlePoolClass(10000),
 	stopRender = false,
 	scene = new THREE.Scene(),
 	camera = new THREE.PerspectiveCamera( 40, window.innerWidth / window.innerHeight, 1,10000 );
@@ -18,7 +19,7 @@ document.body.appendChild( renderer.domElement );
 
 // Ground
 
-var groundGeo = new THREE.PlaneBufferGeometry( 5000, 5000 );
+var groundGeo = new THREE.PlaneBufferGeometry( 500, 500 );
 var groundMat = new THREE.MeshPhongMaterial( { ambient: 0xffffff, color: 0x89B3E0, specular: 0x05FF1A } );
 //groundMat.color.setHSL( 0.095, 1, 0.75 );
 
@@ -87,10 +88,12 @@ var render = function () {
 
 	var indexesToRemove = [];
 	for (var i = particles.length - 1; i >= 0; i--) {
-		if (!particles[i].stillExists) indexesToRemove.push(i);
+		if (particles[i].canRemove()) indexesToRemove.push(i);
 		particles[i].update(difference/1000);
 	};
-	for (var i = indexesToRemove.length - 1; i >= 0; i--) {
+	console.log(JSON.stringify(this.particles));
+	for (var i = 0; i < indexesToRemove.length; i++) {
+		// console.log(JSON.stringify(indexesToRemove));
 		particles.splice(indexesToRemove[i], 1);
 	};
 
@@ -135,7 +138,7 @@ function shoot(event) {
 		fireball.setDamping(0.9);
 		fireball.setPosition(0,80,0);
 		fireball.mesh.castShadow = true;
-		fireball.setEmitter(20,150);
+		fireball.setEmitter(1,150);
 
 		particles.push(fireball);
 		scene.add(fireball.mesh);
