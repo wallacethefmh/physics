@@ -1,9 +1,10 @@
 
 var particles = [],
-	particlePool = new particlePoolClass(10000),
+	particlePool = new particlePoolClass(100000),
 	stopRender = false,
 	scene = new THREE.Scene(),
-	camera = new THREE.PerspectiveCamera( 40, window.innerWidth / window.innerHeight, 1,10000 );
+	camera = new THREE.PerspectiveCamera( 40, window.innerWidth / window.innerHeight, 1,10000 ),
+	forceRegistry = new forceRegistry();
 
 camera.position.set( 1500, 2400, 1500 );
 
@@ -19,8 +20,8 @@ document.body.appendChild( renderer.domElement );
 
 // Ground
 
-var groundGeo = new THREE.PlaneBufferGeometry( 500, 500 );
-var groundMat = new THREE.MeshPhongMaterial( { ambient: 0xffffff, color: 0x89B3E0, specular: 0x05FF1A } );
+var groundGeo = new THREE.PlaneBufferGeometry( 5500, 5500 );
+var groundMat = new THREE.MeshPhongMaterial( { ambient: 0xffffff, color: 0x0c0638, specular: 0x0c0638 } );
 //groundMat.color.setHSL( 0.095, 1, 0.75 );
 
 var ground = new THREE.Mesh( groundGeo, groundMat );
@@ -86,12 +87,14 @@ var render = function () {
 	}
 	time = new Date();
 
+	// apply forces for each frame
+	forceRegistry.updateForces(difference/1000);
+
 	var indexesToRemove = [];
 	for (var i = particles.length - 1; i >= 0; i--) {
 		if (particles[i].canRemove()) indexesToRemove.push(i);
 		particles[i].update(difference/1000);
 	};
-	console.log(JSON.stringify(this.particles));
 	for (var i = 0; i < indexesToRemove.length; i++) {
 		// console.log(JSON.stringify(indexesToRemove));
 		particles.splice(indexesToRemove[i], 1);
@@ -105,7 +108,7 @@ var mouse = {};
 var raycaster = new THREE.Raycaster();
 var velocityFactor = 650;
 
-// click to create fireball
+// click to create 
 document.addEventListener('mousedown', shoot, false);
 function shoot(event) {
 	event.preventDefault();
@@ -132,13 +135,21 @@ function shoot(event) {
 		var mesh = new THREE.Mesh( geometry, material );
 		
 		var fireball = new cyclone.particle(mesh);
-		fireball.setMass(1.0); // 1.0kg - mostly blast damage
+		var mass = Math.floor(Math.random() * 400);
+		fireball.setMass(.01); // 1.0kg - mostly blast damage
+		console.log('the mass for this fireball: ' + mass);
 		fireball.setVelocity(new THREE.Vector3(velocityX,60,velocityZ)); //
 		fireball.setAcceleration(new THREE.Vector3(0, -65.0, 0));
 		fireball.setDamping(0.9);
 		fireball.setPosition(0,80,0);
 		fireball.mesh.castShadow = true;
 		fireball.setEmitter(1,150);
+
+		var fireballDrag = new forceGenerator_particleDrag(0.001);
+		forceRegistry.add({
+			particle : fireball,
+			fg : fireballDrag
+		});
 
 		particles.push(fireball);
 		scene.add(fireball.mesh);
